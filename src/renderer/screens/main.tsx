@@ -1,38 +1,74 @@
-import { Terminal } from 'lucide-react'
-import { useEffect } from 'react'
-
-import {
-  Alert,
-  AlertTitle,
-  AlertDescription,
-} from 'renderer/components/ui/alert'
-
-// The "App" comes from the context bridge in preload/index.ts
-const { App } = window
+import { useState } from "react"
+import { Power, Activity } from "lucide-react"
+import { motion } from "motion/react"
 
 export function MainScreen() {
-  useEffect(() => {
-    // check the console on dev tools
-    App.sayHelloFromBridge()
-  }, [])
-
-  const userName = App.username || 'there'
+  const [isOn, setIsOn] = useState(false)
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen bg-background">
-      <Alert className="no-drag mt-5 bg-transparent border-transparent text-accent w-fit">
-        <AlertTitle className="text-5xl text-teal-400">
-          Hi, {userName}!
-        </AlertTitle>
+    <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-col items-center gap-8">
+        <motion.button
+          onClick={() => setIsOn(!isOn)}
+          whileTap={{ scale: 0.92 }}
+          whileHover={{ scale: 1.05 }}
+          className={`
+            relative flex h-40 w-40 cursor-pointer items-center justify-center
+            rounded-full border-2 transition-all duration-500 outline-none
+            ${isOn
+              ? 'border-emerald-500/40 bg-emerald-500 shadow-[0_0_60px_rgba(52,211,153,0.3)]'
+              : 'border-rose-500/30 bg-rose-500/20 shadow-[0_0_40px_rgba(244,63,94,0.15)]'
+            }
+          `}
+        >
+          {isOn && (
+            <>
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute inset-0 rounded-full bg-emerald-500"
+              />
+              <motion.span
+                initial={{ scale: 0, opacity: 0.6 }}
+                animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.1, 0.4] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full bg-emerald-400"
+              />
+              <motion.span
+                initial={{ scale: 0, opacity: 0.3 }}
+                animate={{ scale: [1, 1.8, 1], opacity: [0.2, 0, 0.2] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                className="absolute inset-0 rounded-full bg-emerald-300"
+              />
+            </>
+          )}
+          <motion.div
+            animate={{ rotate: isOn ? 0 : 180 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative z-10"
+          >
+            {isOn ? (
+              <Activity className="h-16 w-16 text-white" />
+            ) : (
+              <Power className="h-16 w-16 text-rose-400/70" />
+            )}
+          </motion.div>
+        </motion.button>
 
-        <AlertDescription className="flex items-center gap-2 text-lg">
-          <Terminal className="size-6 text-fuchsia-300" />
-
-          <span className="text-gray-400">
-            It's time to build something awesome!
+        <div className="flex flex-col items-center gap-1.5">
+          <motion.span
+            key={isOn ? 'on' : 'off'}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`text-2xl font-bold tracking-tight ${isOn ? 'text-emerald-400' : 'text-rose-400'}`}
+          >
+            {isOn ? 'Running' : 'Stopped'}
+          </motion.span>
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-500">
+            Port 8082
           </span>
-        </AlertDescription>
-      </Alert>
-    </main>
+        </div>
+      </div>
+    </div>
   )
 }
