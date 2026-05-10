@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sidebar, SidebarBody, SidebarLink } from "renderer/components/ui/sidebar";
+import { Sidebar, SidebarBody, useSidebar } from "renderer/components/ui/sidebar";
 import {
   IconHome,
   IconClipboardList,
@@ -33,6 +33,79 @@ function useTheme() {
 
 const STATUS: 'running' | 'stopped' = 'stopped'
 
+function NavItem({ icon: Icon, label, active, onClick }: { icon: React.ElementType; label: string; active: boolean; onClick: () => void }) {
+  const { open } = useSidebar()
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        "flex cursor-pointer items-center rounded-lg text-sm font-medium transition-colors",
+        open ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3",
+        active
+          ? "bg-neutral-200/80 text-neutral-900 dark:bg-neutral-700/80 dark:text-white"
+          : "text-neutral-500 hover:bg-neutral-200/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200"
+      )}
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      {open && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="whitespace-pre"
+        >
+          {label}
+        </motion.span>
+      )}
+    </div>
+  )
+}
+
+function BottomItem({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick?: () => void }) {
+  const { open } = useSidebar()
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        "flex cursor-pointer items-center rounded-lg text-sm text-neutral-500 transition-colors hover:bg-neutral-200/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200",
+        open ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3"
+      )}
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      {open && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="whitespace-pre"
+        >
+          {label}
+        </motion.span>
+      )}
+    </div>
+  )
+}
+
+function StatusIndicator() {
+  const { open } = useSidebar()
+  return (
+    <div className={cn("flex items-center rounded-lg", open ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3")}>
+      <span className={cn(
+        "relative flex h-2.5 w-2.5 shrink-0",
+        STATUS === 'running' && "before:absolute before:inset-0 before:animate-ping before:rounded-full before:bg-running before:opacity-75"
+      )}>
+        <span className={cn(
+          "inline-flex h-2.5 w-2.5 rounded-full",
+          STATUS === 'running' ? "bg-running" : "bg-stopped"
+        )} />
+      </span>
+      {open && (
+        <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+          {STATUS === 'running' ? 'Proxy Running' : 'Proxy Stopped'}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function SidebarDemo({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -58,72 +131,25 @@ export default function SidebarDemo({ children }: { children: React.ReactNode })
           <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-1">
-              {links.map((link) => {
-                const active = location.pathname === link.path
-                return (
-                  <div
-                    key={link.path}
-                    onClick={() => navigate(link.path)}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-neutral-200/80 text-neutral-900 dark:bg-neutral-700/80 dark:text-white"
-                        : "text-neutral-500 hover:bg-neutral-200/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200"
-                    )}
-                  >
-                    <link.icon className="h-5 w-5 shrink-0" />
-                    {open && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="whitespace-pre"
-                      >
-                        {link.label}
-                      </motion.span>
-                    )}
-                  </div>
-                )
-              })}
+              {links.map((link) => (
+                <NavItem
+                  key={link.path}
+                  icon={link.icon}
+                  label={link.label}
+                  active={location.pathname === link.path}
+                  onClick={() => navigate(link.path)}
+                />
+              ))}
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <div
+            <BottomItem
+              icon={theme === 'dark' ? IconSun : IconMoon}
+              label={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               onClick={toggle}
-              className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-neutral-500 transition-colors hover:bg-neutral-200/50 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-200"
-            >
-              {theme === 'dark' ? (
-                <IconSun className="h-5 w-5 shrink-0" />
-              ) : (
-                <IconMoon className="h-5 w-5 shrink-0" />
-              )}
-              {open && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="whitespace-pre"
-                >
-                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                </motion.span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-              <span className={cn(
-                "relative flex h-2.5 w-2.5",
-                STATUS === 'running' && "before:absolute before:inset-0 before:animate-ping before:rounded-full before:bg-running before:opacity-75"
-              )}>
-                <span className={cn(
-                  "inline-flex h-2.5 w-2.5 rounded-full",
-                  STATUS === 'running' ? "bg-running" : "bg-stopped"
-                )} />
-              </span>
-              {open && (
-                <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                  {STATUS === 'running' ? 'Proxy Running' : 'Proxy Stopped'}
-                </span>
-              )}
-            </div>
+            />
+            <StatusIndicator />
           </div>
         </SidebarBody>
       </Sidebar>
