@@ -1,9 +1,10 @@
-import { useState } from "react"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from 'renderer/components/ui/card'
+import { useState, useEffect } from "react"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from 'renderer/components/ui/card'
 import { Switch } from 'renderer/components/ui/switch'
 import { Label } from 'renderer/components/ui/label'
 import { Input } from 'renderer/components/ui/input'
 import { Separator } from 'renderer/components/ui/separator'
+import { Button } from 'renderer/components/ui/button'
 import { cn } from 'renderer/lib/utils'
 
 type Provider = 'nvidia_nim' | 'open_router' | 'deepseek' | 'lmstudio' | 'llamacpp' | 'ollama'
@@ -17,8 +18,51 @@ const providers: { id: Provider; name: string; local: boolean; doc: string }[] =
   { id: 'ollama', name: 'Ollama', local: true, doc: 'localhost:11434' },
 ]
 
+function envKeyForProvider(provider: Provider): string {
+  const map: Record<Provider, string> = {
+    nvidia_nim: 'NVIDIA_NIM_API_KEY',
+    open_router: 'OPENROUTER_API_KEY',
+    deepseek: 'DEEPSEEK_API_KEY',
+    lmstudio: 'LM_STUDIO_BASE_URL',
+    llamacpp: 'LLAMACPP_BASE_URL',
+    ollama: 'OLLAMA_BASE_URL',
+  }
+  return map[provider]
+}
+
 export function SettingsScreen() {
+  const [config, setConfig] = useState<Record<string, string>>({})
   const [selectedProvider, setSelectedProvider] = useState<Provider>('nvidia_nim')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    window.App.config.get().then((cfg) => {
+      setConfig(cfg)
+      for (const p of providers) {
+        const key = envKeyForProvider(p.id)
+        if (cfg[key]) {
+          setSelectedProvider(p.id)
+          break
+        }
+      }
+    })
+  }, [])
+
+  const updateConfig = (key: string, value: string) => {
+    setConfig((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await window.App.config.save(config)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="flex flex-1 overflow-y-auto">
@@ -53,13 +97,28 @@ export function SettingsScreen() {
             <div className="flex flex-col gap-3">
               <Label>API Key</Label>
               {selectedProvider === 'nvidia_nim' && (
-                <Input type="password" placeholder="nvapi-..." />
+                <Input
+                  type="password"
+                  placeholder="nvapi-..."
+                  value={config['NVIDIA_NIM_API_KEY'] || ''}
+                  onChange={(e) => updateConfig('NVIDIA_NIM_API_KEY', e.target.value)}
+                />
               )}
               {selectedProvider === 'open_router' && (
-                <Input type="password" placeholder="sk-or-..." />
+                <Input
+                  type="password"
+                  placeholder="sk-or-..."
+                  value={config['OPENROUTER_API_KEY'] || ''}
+                  onChange={(e) => updateConfig('OPENROUTER_API_KEY', e.target.value)}
+                />
               )}
               {selectedProvider === 'deepseek' && (
-                <Input type="password" placeholder="DeepSeek API key" />
+                <Input
+                  type="password"
+                  placeholder="DeepSeek API key"
+                  value={config['DEEPSEEK_API_KEY'] || ''}
+                  onChange={(e) => updateConfig('DEEPSEEK_API_KEY', e.target.value)}
+                />
               )}
               {(selectedProvider === 'lmstudio' || selectedProvider === 'llamacpp' || selectedProvider === 'ollama') && (
                 <div className="flex flex-col gap-2">
@@ -69,6 +128,8 @@ export function SettingsScreen() {
                       selectedProvider === 'llamacpp' ? 'http://localhost:8080/v1' :
                       'http://localhost:11434'
                     }
+                    value={config[envKeyForProvider(selectedProvider)] || ''}
+                    onChange={(e) => updateConfig(envKeyForProvider(selectedProvider), e.target.value)}
                   />
                   <p className="text-xs text-neutral-500">No API key needed for local providers</p>
                 </div>
@@ -86,20 +147,22 @@ export function SettingsScreen() {
           <CardContent className="flex flex-col gap-4">
             <div className="space-y-3">
               {[
-                { label: 'Default Model', id: 'model', hint: 'Fallback for all requests' },
-                { label: 'Opus (complex tasks)', id: 'model_opus', hint: 'Hard reasoning' },
-                { label: 'Sonnet (daily coding)', id: 'model_sonnet', hint: 'Balanced' },
-                { label: 'Haiku (quick tasks)', id: 'model_haiku', hint: 'Fast & cheap' },
+                { label: 'Default Model', key: 'MODEL', hint: 'Fallback for all requests' },
+                { label: 'Opus (complex tasks)', key: 'MODEL_OPUS', hint: 'Hard reasoning' },
+                { label: 'Sonnet (daily coding)', key: 'MODEL_SONNET', hint: 'Balanced' },
+                { label: 'Haiku (quick tasks)', key: 'MODEL_HAIKU', hint: 'Fast & cheap' },
               ].map((m) => (
-                <div key={m.id} className="flex flex-col gap-1.5">
+                <div key={m.key} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={m.id} className="text-xs">{m.label}</Label>
+                    <Label htmlFor={m.key} className="text-xs">{m.label}</Label>
                     <span className="text-[10px] text-neutral-500">{m.hint}</span>
                   </div>
                   <Input
-                    id={m.id}
+                    id={m.key}
                     placeholder={`${selectedProvider}/model-name`}
                     className="font-mono text-xs"
+                    value={config[m.key] || ''}
+                    onChange={(e) => updateConfig(m.key, e.target.value)}
                   />
                 </div>
               ))}
@@ -117,17 +180,35 @@ export function SettingsScreen() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="host">Host</Label>
-                <Input id="host" defaultValue="0.0.0.0" className="font-mono text-xs" />
+                <Input
+                  id="host"
+                  className="font-mono text-xs"
+                  value={config['HOST'] || '0.0.0.0'}
+                  onChange={(e) => updateConfig('HOST', e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="port">Port</Label>
-                <Input id="port" defaultValue="8082" type="number" className="font-mono text-xs" />
+                <Input
+                  id="port"
+                  type="number"
+                  className="font-mono text-xs"
+                  value={config['PORT'] || '8082'}
+                  onChange={(e) => updateConfig('PORT', e.target.value)}
+                />
               </div>
             </div>
             <Separator />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="auth-token" className="text-xs">Auth Token (optional)</Label>
-              <Input id="auth-token" type="password" placeholder="ANTHROPIC_AUTH_TOKEN" className="font-mono text-xs" />
+              <Input
+                id="auth-token"
+                type="password"
+                placeholder="ANTHROPIC_AUTH_TOKEN"
+                className="font-mono text-xs"
+                value={config['ANTHROPIC_AUTH_TOKEN'] || ''}
+                onChange={(e) => updateConfig('ANTHROPIC_AUTH_TOKEN', e.target.value)}
+              />
               <p className="text-[10px] text-neutral-500">Leave empty for no authentication</p>
             </div>
             <Separator />
@@ -136,15 +217,30 @@ export function SettingsScreen() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs">Limit</Label>
-                  <Input defaultValue="40" type="number" className="font-mono text-xs" />
+                  <Input
+                    type="number"
+                    className="font-mono text-xs"
+                    value={config['PROVIDER_RATE_LIMIT'] || '40'}
+                    onChange={(e) => updateConfig('PROVIDER_RATE_LIMIT', e.target.value)}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs">Window (s)</Label>
-                  <Input defaultValue="60" type="number" className="font-mono text-xs" />
+                  <Input
+                    type="number"
+                    className="font-mono text-xs"
+                    value={config['RATE_LIMIT_WINDOW'] || '60'}
+                    onChange={(e) => updateConfig('RATE_LIMIT_WINDOW', e.target.value)}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs">Concurrency</Label>
-                  <Input defaultValue="5" type="number" className="font-mono text-xs" />
+                  <Input
+                    type="number"
+                    className="font-mono text-xs"
+                    value={config['PROVIDER_MAX_CONCURRENCY'] || '5'}
+                    onChange={(e) => updateConfig('PROVIDER_MAX_CONCURRENCY', e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -163,15 +259,11 @@ export function SettingsScreen() {
                 <Label htmlFor="autostart">Launch on login</Label>
                 <p className="text-xs text-neutral-500">Auto-start proxy on system boot</p>
               </div>
-              <Switch id="autostart" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="minimize-tray">Minimize to tray</Label>
-                <p className="text-xs text-neutral-500">Keep running in background</p>
-              </div>
-              <Switch id="minimize-tray" defaultChecked />
+              <Switch
+                id="autostart"
+                checked={config['AUTOSTART'] === 'true'}
+                onCheckedChange={(v) => updateConfig('AUTOSTART', String(v))}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -179,9 +271,25 @@ export function SettingsScreen() {
                 <Label htmlFor="thinking">Thinking mode</Label>
                 <p className="text-xs text-neutral-500">Enable reasoning tokens</p>
               </div>
-              <Switch id="thinking" defaultChecked />
+              <Switch
+                id="thinking"
+                checked={config['ENABLE_MODEL_THINKING'] !== 'false'}
+                onCheckedChange={(v) => updateConfig('ENABLE_MODEL_THINKING', String(v))}
+              />
             </div>
           </CardContent>
+        </Card>
+
+        {/* Save */}
+        <Card>
+          <CardFooter className="flex justify-end gap-3 pt-4">
+            {saved && (
+              <span className="text-sm text-emerald-500">Configuration saved</span>
+            )}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </div>

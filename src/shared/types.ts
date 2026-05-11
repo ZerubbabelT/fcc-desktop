@@ -16,3 +16,17 @@ export interface WindowCreationByIPC {
   window(): BrowserWindowOrNull
   callback(window: BrowserWindow, event: IpcMainInvokeEvent): void
 }
+
+export interface ServerStatus {
+  running: boolean
+  pid: number | null
+  port: number
+  uptime: number | null
+}
+
+export interface LogLine {
+  time: string
+  level: 'info' | 'warn' | 'error' | 'debug'
+  message: string
+  raw: string
+}

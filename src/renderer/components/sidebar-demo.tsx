@@ -31,8 +31,6 @@ function useTheme() {
   return { theme, toggle: () => setTheme(t => t === 'dark' ? 'light' : 'dark') }
 }
 
-const STATUS: 'running' | 'stopped' = 'stopped'
-
 function NavItem({ icon: Icon, label, active, onClick }: { icon: React.ElementType; label: string; active: boolean; onClick: () => void }) {
   const { open } = useSidebar()
   return (
@@ -84,22 +82,22 @@ function BottomItem({ icon: Icon, label, onClick }: { icon: React.ElementType; l
   )
 }
 
-function StatusIndicator() {
+function StatusIndicator({ running }: { running: boolean }) {
   const { open } = useSidebar()
   return (
     <div className={cn("flex items-center rounded-lg", open ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3")}>
       <span className={cn(
         "relative flex h-2.5 w-2.5 shrink-0",
-        STATUS === 'running' && "before:absolute before:inset-0 before:animate-ping before:rounded-full before:bg-running before:opacity-75"
+        running && "before:absolute before:inset-0 before:animate-ping before:rounded-full before:bg-running before:opacity-75"
       )}>
         <span className={cn(
           "inline-flex h-2.5 w-2.5 rounded-full",
-          STATUS === 'running' ? "bg-running" : "bg-stopped"
+          running ? "bg-running" : "bg-stopped"
         )} />
       </span>
       {open && (
         <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-          {STATUS === 'running' ? 'Proxy Running' : 'Proxy Stopped'}
+          {running ? 'Proxy Running' : 'Proxy Stopped'}
         </span>
       )}
     </div>
@@ -118,6 +116,12 @@ export default function SidebarDemo({ children }: { children: React.ReactNode })
   ]
 
   const [open, setOpen] = useState(false)
+  const [running, setRunning] = useState(false)
+
+  useEffect(() => {
+    window.App.server.getStatus().then((s) => setRunning(s.running))
+    return window.App.onStatusChange((s) => setRunning(s.running))
+  }, [])
 
   return (
     <div
@@ -149,7 +153,7 @@ export default function SidebarDemo({ children }: { children: React.ReactNode })
               label={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               onClick={toggle}
             />
-            <StatusIndicator />
+            <StatusIndicator running={running} />
           </div>
         </SidebarBody>
       </Sidebar>

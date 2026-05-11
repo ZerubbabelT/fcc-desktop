@@ -10,6 +10,7 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
     "components": "renderer/components",
     "utils": "renderer/utils",
@@ -17,5 +18,7 @@
     "lib": "renderer/lib",
     "hooks": "renderer/hooks"
   },
-  "iconLibrary": "lucide"
+  "registries": {
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
+  }
 }
