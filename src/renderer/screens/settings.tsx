@@ -30,6 +30,28 @@ function envKeyForProvider(provider: Provider): string {
   return map[provider]
 }
 
+function providerFromModel(model: string | undefined): Provider | null {
+  const provider = model?.split('/', 1)[0]
+  return providers.find((p) => p.id === provider)?.id ?? null
+}
+
+function activeProviderFromConfig(config: Record<string, string>): Provider {
+  const routedProvider =
+    providerFromModel(config['MODEL_SONNET']) ??
+    providerFromModel(config['MODEL_OPUS']) ??
+    providerFromModel(config['MODEL_HAIKU']) ??
+    providerFromModel(config['MODEL'])
+
+  if (routedProvider) return routedProvider
+
+  for (const p of providers) {
+    const key = envKeyForProvider(p.id)
+    if (config[key]) return p.id
+  }
+
+  return 'nvidia_nim'
+}
+
 export function SettingsScreen() {
   const [config, setConfig] = useState<Record<string, string>>({})
   const [selectedProvider, setSelectedProvider] = useState<Provider>('nvidia_nim')
@@ -39,13 +61,7 @@ export function SettingsScreen() {
   useEffect(() => {
     window.App.config.get().then((cfg) => {
       setConfig(cfg)
-      for (const p of providers) {
-        const key = envKeyForProvider(p.id)
-        if (cfg[key]) {
-          setSelectedProvider(p.id)
-          break
-        }
-      }
+      setSelectedProvider(activeProviderFromConfig(cfg))
     })
   }, [])
 
@@ -229,8 +245,8 @@ export function SettingsScreen() {
                   <Input
                     type="number"
                     className="font-mono text-xs"
-                    value={config['RATE_LIMIT_WINDOW'] || '60'}
-                    onChange={(e) => updateConfig('RATE_LIMIT_WINDOW', e.target.value)}
+                    value={config['PROVIDER_RATE_WINDOW'] || '60'}
+                    onChange={(e) => updateConfig('PROVIDER_RATE_WINDOW', e.target.value)}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
