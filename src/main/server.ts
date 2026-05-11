@@ -39,6 +39,14 @@ function sanitizeConfigValue(value: string): string {
   return trimmed
 }
 
+function getHealthCheckHost(host: string | undefined): string {
+  const normalized = sanitizeConfigValue(host ?? '')
+  if (!normalized || normalized === '0.0.0.0' || normalized === '::') {
+    return '127.0.0.1'
+  }
+  return normalized
+}
+
 function findCommand(): string {
   const cmd = process.platform === 'win32' ? 'free-claude-code.exe' : 'free-claude-code'
   const commonPaths: string[] = [
@@ -92,6 +100,7 @@ export class ServerManager {
   private statusChangeCallbacks: Array<(status: ServerStatus) => void> = []
   private logCallbacks: Array<(line: LogLine) => void> = []
   private port = DEFAULT_PORT
+  private healthCheckHost = '127.0.0.1'
 
   private getLogStream(): WriteStream {
     if (!this.logStream) {
@@ -152,13 +161,14 @@ export class ServerManager {
 
     const config = this.loadConfig()
     this.port = Number(config.PORT) || DEFAULT_PORT
+    this.healthCheckHost = getHealthCheckHost(config.HOST)
 
     const cmd = findCommand()
     this.addLog(parseLogLine(`Starting server: ${cmd}`))
 
     this.process = spawn(cmd, [], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, ...config, PORT: String(this.port) },
+      env: { ...process.env, ...config, HOST: config.HOST || '0.0.0.0', PORT: String(this.port) },
       shell: false,
     })
     this.startTime = Date.now()
@@ -196,7 +206,7 @@ export class ServerManager {
     for (let i = 0; i < HEALTH_CHECK_RETRIES; i++) {
       await new Promise(r => setTimeout(r, HEALTH_CHECK_INTERVAL))
       try {
-        const res = await fetch(`http://127.0.0.1:${this.port}/health`)
+        const res = await fetch(`http://${this.healthCheckHost}:${this.port}/health`)
         if (res.ok) {
           this.addLog(parseLogLine('Server is healthy'))
           this.emitStatus()
@@ -256,6 +266,10 @@ export class ServerManager {
       const key = trimmed.slice(0, eqIdx).trim()
       const value = sanitizeConfigValue(trimmed.slice(eqIdx + 1))
       if (key) config[key] = value
+    }
+    if (config.RATE_LIMIT_WINDOW && !config.PROVIDER_RATE_WINDOW) {
+      config.PROVIDER_RATE_WINDOW = config.RATE_LIMIT_WINDOW
+      delete config.RATE_LIMIT_WINDOW
     }
     return config
   }
