@@ -44,6 +44,30 @@ makeAppWithSingleInstanceLock(async () => {
     server.saveConfig(config)
   })
 
+  ipcMain.handle('proxy:request', async (_event, method: string, path: string, body?: string) => {
+    const status = server.getStatus()
+    if (!status.running) return { ok: false, error: 'Server not running' }
+    try {
+      const url = `http://127.0.0.1:${status.port}${path}`
+      const config = server.loadConfig()
+      const headers: Record<string, string> = body ? { 'Content-Type': 'application/json' } : {}
+
+      if (config.ANTHROPIC_AUTH_TOKEN) {
+        headers['x-api-key'] = config.ANTHROPIC_AUTH_TOKEN
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers,
+        body,
+      })
+      const text = await res.text()
+      return { ok: res.ok, status: res.status, body: text }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  })
+
   const window = await makeAppSetup(MainWindow)
 
   server.onLog((line) => {

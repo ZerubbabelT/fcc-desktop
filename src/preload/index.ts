@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ServerStatus, LogLine } from 'shared/types'
 
+export interface ProxyResult {
+  ok: boolean
+  status?: number
+  body?: string
+  error?: string
+}
+
 export interface AppAPI {
   server: {
     start: () => Promise<ServerStatus>
@@ -12,6 +19,9 @@ export interface AppAPI {
   config: {
     get: () => Promise<Record<string, string>>
     save: (config: Record<string, string>) => Promise<void>
+  }
+  proxy: {
+    request: (method: string, path: string, body?: string) => Promise<ProxyResult>
   }
   logs: {
     onLog: (callback: (line: LogLine) => void) => () => void
@@ -31,6 +41,9 @@ const API: AppAPI = {
   config: {
     get: () => ipcRenderer.invoke('config:get'),
     save: (config) => ipcRenderer.invoke('config:save', config),
+  },
+  proxy: {
+    request: (method, path, body) => ipcRenderer.invoke('proxy:request', method, path, body),
   },
   logs: {
     onLog: (callback) => {
