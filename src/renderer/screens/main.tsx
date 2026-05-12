@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Power, Activity, FlaskConical } from "lucide-react"
+import { Power, Activity, FlaskConical, LoaderCircle } from "lucide-react"
 import { motion } from "motion/react"
 import { cn } from "renderer/lib/utils"
 
@@ -155,11 +155,13 @@ export function MainScreen() {
             </>
           )}
           <motion.div
-            animate={{ rotate: isOn ? 0 : 180 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            animate={loading ? { rotate: 360 } : { rotate: isOn ? 0 : 180 }}
+            transition={loading ? { duration: 1, repeat: Infinity, ease: "linear" } : { duration: 0.5, ease: "easeInOut" }}
             className="relative z-10"
           >
-            {isOn ? (
+            {loading ? (
+              <LoaderCircle className="h-16 w-16 text-white/80" />
+            ) : isOn ? (
               <Activity className="h-16 w-16 text-white" />
             ) : (
               <Power className="h-16 w-16 text-rose-400/70" />
@@ -174,7 +176,7 @@ export function MainScreen() {
             animate={{ opacity: 1, y: 0 }}
             className={`text-2xl font-bold tracking-tight ${isOn ? 'text-emerald-400' : 'text-rose-400'}`}
           >
-            {loading ? '...' : isOn ? 'Running' : 'Stopped'}
+            {loading ? (isOn ? 'Stopping...' : 'Starting...') : isOn ? 'Running' : 'Stopped'}
           </motion.span>
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-500">
             Port 8082
