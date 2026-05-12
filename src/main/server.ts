@@ -117,6 +117,7 @@ export class ServerManager {
       port: this.port,
       uptime: this.startTime ? Date.now() - this.startTime : null,
     }
+  ❮
   }
 
   getLogs(): LogLine[] {
@@ -149,7 +150,7 @@ export class ServerManager {
     }
     try {
       this.getLogStream().write(`${line.raw}\n`)
-    } catch {}
+    } catch { }
     for (const cb of this.logCallbacks) cb(line)
   }
 
@@ -212,7 +213,7 @@ export class ServerManager {
           this.emitStatus()
           return
         }
-      } catch {}
+      } catch { }
     }
     this.addLog(parseLogLine('Health check did not confirm server is running'))
     this.emitStatus()
